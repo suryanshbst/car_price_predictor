@@ -8,70 +8,76 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# This tells Python: "Find the exact folder this app.py file is sitting in"
+# 1. PATH MANAGEMENT
+# This tells Python to always look in the current folder, regardless of where the app is run from
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Construct absolute paths securely
-model_path = os.path.join(BASE_DIR, 'LinearRegressionModel.pkl')
 data_path = os.path.join(BASE_DIR, 'Cleaned_Car_data.csv')
+model_path = os.path.join(BASE_DIR, 'LinearRegressionModel.pkl')
 
-# Load the files using the secure paths
-try:
-    model = pickle.load(open(model_path, 'rb'))
+# 2. SAFETY CHECKS (Defensive Programming)
+if not os.path.exists(data_path):
+    print(f"CRITICAL ERROR: Data file not found at {data_path}")
+    car_data = None
+else:
     car_data = pd.read_csv(data_path)
-    print("✅ Model and Data loaded successfully!")
-except Exception as e:
-    print(f"❌ Error loading files: {e}")
+    print("✅ Data loaded successfully.")
 
+if not os.path.exists(model_path):
+    print(f"WARNING: Model file not found at {model_path}. Train the model first!")
+    model = None
+else:
+    model = pickle.load(open(model_path, 'rb'))
+    print("✅ Model loaded successfully.")
+
+# 3. API ENDPOINTS
 @app.route('/api/options', methods=['GET'])
 def get_options():
-    # Group models by company
-    company_model_map = car_data.groupby('company')['name'].unique().apply(list).to_dict()
-    
-    return jsonify({
-        "companies": sorted(car_data['company'].unique().tolist()),
-        "company_model_map": company_model_map, # This is the key!
-        "years": sorted(car_data['year'].unique().tolist(), reverse=True),
-        "fuel_types": car_data['fuel_type'].dropna().unique().tolist()
-    })
-    
+    if car_data is None:
+        return jsonify({"error": "Data file not loaded"}), 500
+        
+    try:
+        # Build the company-to-model map for the cascading dropdowns
+        company_model_map = car_data.groupby('company')['name'].unique().apply(list).to_dict()
+        
+        return jsonify({
+            "companies": sorted(car_data['company'].unique().tolist()),
+            "company_model_map": company_model_map,
+            "years": sorted(car_data['year'].unique().tolist(), reverse=True),
+            "fuel_types": car_data['fuel_type'].dropna().unique().tolist()
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/predict', methods=['POST'])
 def predict():
+    if model is None:
+        return jsonify({"error": "Model not loaded"}), 500
+        
     try:
         data = request.json
         
-        # 1. Validation: Ensure required fields are not empty
-        required_fields = ['name', 'company', 'year', 'kms_driven', 'fuel_type']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({"error": f"Missing or empty field: {field}"}), 400
+        # Validation: Ensure all fields are provided
+        required = ['name', 'company', 'year', 'kms_driven', 'fuel_type']
+        if not all(k in data for k in required):
+            return jsonify({"error": "Missing input fields"}), 400
 
-        # 2. Format incoming JSON into a DataFrame
-        prediction_df = pd.DataFrame(columns=['name', 'company', 'year', 'kms_driven', 'fuel_type'])
+        # Construct DataFrame for the model
+        input_df = pd.DataFrame([[
+            data['name'], 
+            data['company'], 
+            int(data['year']), 
+            int(data['kms_driven']), 
+            data['fuel_type']
+        ]], columns=['name', 'company', 'year', 'kms_driven', 'fuel_type'])
         
-        # 3. Safely convert to correct types
-        prediction_df.loc[0] = [
-            data.get('name'), 
-            data.get('company'), 
-            int(data.get('year')), 
-            int(data.get('kms_driven')), 
-            data.get('fuel_type')
-        ]
+        # Predict
+        prediction = model.predict(input_df)
         
-        # 4. Predict
-        prediction = model.predict(prediction_df)
+        return jsonify({"price": round(float(prediction[0]), 2)})
         
-        # 5. Return JSON
-        return jsonify({"price": round(prediction[0], 2)})
-        
-    except ValueError as ve:
-        # Specifically catch conversion errors (like trying to turn '' into an int)
-        return jsonify({"error": f"Invalid data format: {str(ve)}"}), 400
     except Exception as e:
-        # Catch unexpected errors
-        print(f"Server error: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    # Run on port 5000
     app.run(port=5000, debug=True)
