@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { motion, AnimatePresence } from "framer-motion"; // Add these imports
+import { motion, AnimatePresence } from "framer-motion";
+import "./App.css"; // Make sure this is imported!
 
 interface CarOptions {
   companies: string[];
@@ -11,7 +12,7 @@ interface CarOptions {
 
 function App() {
   const [options, setOptions] = useState<CarOptions | null>(null);
-  const [loading, setLoading] = useState(false); // Loading state added
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     company: "",
@@ -31,8 +32,8 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); // Start loading
-    setPrediction(null); // Clear old result
+    setLoading(true);
+    setPrediction(null);
 
     try {
       const res = await axios.post(
@@ -44,105 +45,139 @@ function App() {
       console.error("Prediction error:", err);
       alert("Error: Please make sure all fields are filled!");
     } finally {
-      setLoading(false); // Stop loading regardless of result
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: "50px", maxWidth: "600px", margin: "auto" }}>
-      <h1>Car Price Predictor</h1>
+    <div className="prediction-card">
+      {/* Header Section */}
+      <div className="card-header">
+        <h1>Predict Price</h1>
+        <p>Enter vehicle details to estimate its market value.</p>
+      </div>
 
-      {options ? (
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-        >
-          <select
-            value={formData.company}
-            onChange={(e) =>
-              setFormData({ ...formData, company: e.target.value, name: "" })
-            }
-          >
-            <option value="">Select Company</option>
-            {options.companies.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+      {/* Body Section */}
+      <div className="card-body">
+        {options ? (
+          <form onSubmit={handleSubmit} className="form-layout">
+            <div className="input-group">
+              <label>Manufacturer</label>
+              <select
+                className="premium-input"
+                value={formData.company}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    company: e.target.value,
+                    name: "",
+                  })
+                }
+              >
+                <option value="">Select Company</option>
+                {options.companies.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <select
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            disabled={!formData.company}
-          >
-            <option value="">
-              {formData.company ? "Select Model" : "Select Company First"}
-            </option>
-            {formData.company &&
-              options?.company_model_map[formData.company]?.map((m) => (
-                <option key={m} value={m}>
-                  {m}
+            <div className="input-group">
+              <label>Vehicle Model</label>
+              <select
+                className="premium-input"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                disabled={!formData.company}
+              >
+                <option value="">
+                  {formData.company ? "Select Model" : "Select Company First"}
                 </option>
-              ))}
-          </select>
+                {formData.company &&
+                  options?.company_model_map[formData.company]?.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+              </select>
+            </div>
 
-          <select
-            value={formData.year}
-            onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-          >
-            <option value="">Select Year</option>
-            {options.years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+            <div className="input-group">
+              <label>Manufacturing Year</label>
+              <select
+                className="premium-input"
+                value={formData.year}
+                onChange={(e) =>
+                  setFormData({ ...formData, year: e.target.value })
+                }
+              >
+                <option value="">Select Year</option>
+                {options.years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <input
-            type="number"
-            placeholder="Kilometers Driven"
-            value={formData.kms_driven}
-            onChange={(e) =>
-              setFormData({ ...formData, kms_driven: e.target.value })
-            }
-          />
+            <div className="input-group">
+              <label>Kilometers Driven</label>
+              <input
+                className="premium-input"
+                type="number"
+                placeholder="e.g. 45000"
+                value={formData.kms_driven}
+                onChange={(e) =>
+                  setFormData({ ...formData, kms_driven: e.target.value })
+                }
+              />
+            </div>
 
-          <select
-            value={formData.fuel_type}
-            onChange={(e) =>
-              setFormData({ ...formData, fuel_type: e.target.value })
-            }
-          >
-            <option value="">Select Fuel Type</option>
-            {options.fuel_types.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+            <div className="input-group">
+              <label>Fuel Type</label>
+              <select
+                className="premium-input"
+                value={formData.fuel_type}
+                onChange={(e) =>
+                  setFormData({ ...formData, fuel_type: e.target.value })
+                }
+              >
+                <option value="">Select Fuel Type</option>
+                {options.fuel_types.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Predicting..." : "Predict Price"}
-          </button>
-
-          {loading && <p style={{ color: "blue" }}>Processing your data...</p>}
-        </form>
-      ) : (
-        <p>Loading options...</p>
-      )}
-
-      <AnimatePresence>
-        {prediction && (
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            Estimated Price: ₹{prediction}
-          </motion.h2>
+            <button type="submit" className="submit-btn" disabled={loading}>
+              {loading ? "Processing..." : "Calculate Price"}
+            </button>
+          </form>
+        ) : (
+          <p style={{ color: "#6c757d", textAlign: "center" }}>
+            Connecting to data models...
+          </p>
         )}
-      </AnimatePresence>
+
+        {/* Framer Motion Animation for Result */}
+        <AnimatePresence>
+          {prediction && (
+            <motion.h2
+              className="result-display"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              ₹{prediction.toLocaleString("en-IN")}
+            </motion.h2>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
