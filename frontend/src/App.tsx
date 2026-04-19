@@ -1,15 +1,18 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion"; // Add these imports
 
 interface CarOptions {
   companies: string[];
-  company_model_map: { [key: string]: string[] }; // This maps company name to list of models
+  company_model_map: { [key: string]: string[] };
   years: number[];
   fuel_types: string[];
 }
 
 function App() {
   const [options, setOptions] = useState<CarOptions | null>(null);
+  const [loading, setLoading] = useState(false); // Loading state added
+
   const [formData, setFormData] = useState({
     company: "",
     name: "",
@@ -28,8 +31,8 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Debugging: See exactly what we are sending
-    console.log("Sending to Backend:", formData);
+    setLoading(true); // Start loading
+    setPrediction(null); // Clear old result
 
     try {
       const res = await axios.post(
@@ -40,6 +43,8 @@ function App() {
     } catch (err) {
       console.error("Prediction error:", err);
       alert("Error: Please make sure all fields are filled!");
+    } finally {
+      setLoading(false); // Stop loading regardless of result
     }
   };
 
@@ -55,7 +60,7 @@ function App() {
           <select
             value={formData.company}
             onChange={(e) =>
-              setFormData({ ...formData, company: e.target.value })
+              setFormData({ ...formData, company: e.target.value, name: "" })
             }
           >
             <option value="">Select Company</option>
@@ -69,16 +74,13 @@ function App() {
           <select
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            disabled={!formData.company} // Disables dropdown until a company is selected
+            disabled={!formData.company}
           >
             <option value="">
               {formData.company ? "Select Model" : "Select Company First"}
             </option>
-
-            {/* Only show models if a company is selected */}
             {formData.company &&
-              options?.company_model_map[formData.company] &&
-              options.company_model_map[formData.company].map((m) => (
+              options?.company_model_map[formData.company]?.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -120,13 +122,27 @@ function App() {
             ))}
           </select>
 
-          <button type="submit">Predict Price</button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Predicting..." : "Predict Price"}
+          </button>
+
+          {loading && <p style={{ color: "blue" }}>Processing your data...</p>}
         </form>
       ) : (
         <p>Loading options...</p>
       )}
 
-      {prediction && <h2>Estimated Price: ₹{prediction}</h2>}
+      <AnimatePresence>
+        {prediction && (
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            Estimated Price: ₹{prediction}
+          </motion.h2>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
