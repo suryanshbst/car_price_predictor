@@ -1,35 +1,34 @@
 import pandas as pd
-import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+from tensorflow.keras import layers
 import os
 
-# Go up one level from 'research' to reach the CSV in 'ml_service'
+# Go up one level to reach 'ml_service' and then point directly to the file
 DATA_PATH = os.path.join(os.path.dirname(__file__), '..', 'Cleaned_Car_data.csv')
 
-def build_scratch_model():
-    # Load and prepare data
+def build_and_train():
+    # 1. Load the data
     df = pd.read_csv(DATA_PATH)
-    # Simple selection for demonstration: use only numeric columns for the "from scratch" model
-    # (Handling strings requires OneHotEncoding which we keep in the production GBR model)
-    X = df[['year', 'kms_driven']].values
+    
+    # 2. Prepare the numeric features
+    X = df[['year', 'kms_driven']].values 
     y = df['Price'].values
 
-    # Build the Neural Network
-    model = Sequential([
-        Dense(64, activation='relu', input_shape=(2,)),
-        Dense(32, activation='relu'),
-        Dense(1) # Linear output for regression
+    # 3. Define the Neural Network architecture
+    model = tf.keras.Sequential([
+        layers.Dense(64, activation='relu', input_shape=(2,)), 
+        layers.Dense(32, activation='relu'),
+        layers.Dense(1)
     ])
 
-    model.compile(optimizer='adam', loss='mse')
-
-    # Train
+    # 4. Compile the model
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    
+    # 5. Train the model (Backpropagation happens here)
     print("🚀 Training Neural Network...")
     model.fit(X, y, epochs=50, batch_size=32, verbose=1)
     
-    print("✅ Model trained from scratch.")
+    print("✅ Training complete.")
 
 if __name__ == '__main__':
-    build_scratch_model()
+    build_and_train()
